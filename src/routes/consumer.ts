@@ -1,8 +1,20 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { validate } from '../middleware/validate';
-import { createBookingSchema, rescheduleSchema, rateSchema, verifyOtpSchema, cancelSchema } from '../validators/booking';
-import { addressSchema, updateAddressSchema, favoriteSchema, disputeSchema } from '../validators/consumer';
+import { bookingLimiter } from '../middleware/rateLimiter';
+import {
+  createBookingSchema,
+  rescheduleSchema,
+  rateSchema,
+  verifyOtpSchema,
+  cancelSchema,
+} from '../validators/booking';
+import {
+  addressSchema,
+  updateAddressSchema,
+  favoriteSchema,
+  disputeSchema,
+} from '../validators/consumer';
 import * as consumerController from '../controllers/consumerController';
 
 const router = Router();
@@ -17,7 +29,7 @@ router.get('/services/:id', consumerController.getServiceDetail);
 
 // Bookings
 router.get('/bookings', consumerController.getBookings);
-router.post('/bookings', validate(createBookingSchema), consumerController.createBooking);
+router.post('/bookings', bookingLimiter, validate(createBookingSchema), consumerController.createBooking);
 router.put('/bookings/:id/cancel', validate(cancelSchema), consumerController.cancelBooking);
 router.put('/bookings/:id/reschedule', validate(rescheduleSchema), consumerController.rescheduleBooking);
 router.post('/bookings/:id/rate', validate(rateSchema), consumerController.rateBooking);

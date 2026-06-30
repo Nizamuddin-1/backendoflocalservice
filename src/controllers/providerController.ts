@@ -1,132 +1,346 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types';
+import { AppError } from '../middleware/errorHandler';
 import * as providerService from '../services/providerService';
-import { asyncHandler } from '../utils/asyncHandler';
+import { handleControllerError } from '../utils/handleControllerError';
 
-export const getProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const profile = await providerService.getProviderProfile(req.user!.userId);
-  res.json(profile);
-});
+export const getProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
 
-export const updateProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const profile = await providerService.updateProviderProfile(req.user!.userId, req.body);
-  res.json(profile);
-});
+    const profile = await providerService.getProviderProfile(userId);
+    res.status(200).json({ data: profile, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
 
-export const getStats = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const stats = await providerService.getProviderStats(req.user!.userId);
-  res.json(stats);
-});
+export const updateProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
 
-export const getBookings = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const bookings = await providerService.getProviderBookings(
-    req.user!.userId,
-    req.query.filter as string
-  );
-  res.json(bookings);
-});
+    const profileData = req.body;
+    const profile = await providerService.updateProviderProfile(userId, profileData);
+    res.status(200).json({ data: profile, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
 
-export const getBookingDetail = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const booking = await providerService.getBookingDetail(req.params.id);
-  res.json(booking);
-});
+export const getStats = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
 
-export const acceptBooking = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const booking = await providerService.acceptBooking(req.params.id, req.user!.userId);
-  res.json(booking);
-});
+    const stats = await providerService.getProviderStats(userId);
+    res.status(200).json({ data: stats, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
 
-export const declineBooking = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const booking = await providerService.declineBooking(req.params.id, req.user!.userId);
-  res.json(booking);
-});
+export const getBookings = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
 
-export const updateJobStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { status } = req.body;
-  const booking = await providerService.updateJobStatus(req.params.id, req.user!.userId, status);
-  res.json(booking);
-});
+    const filter = req.query.filter as string | undefined;
 
-export const uploadPhotos = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { photoUrls } = req.body;
-  const booking = await providerService.uploadPhotos(req.params.id, req.user!.userId, photoUrls || []);
-  res.json(booking);
-});
+    const bookings = await providerService.getProviderBookings(userId, filter);
+    res.status(200).json({ data: bookings, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
 
-export const getEarnings = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const earnings = await providerService.getEarnings(req.user!.userId);
-  res.json(earnings);
-});
+export const getBookingDetail = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) throw new AppError('Booking ID is required', 400);
 
-export const toggleAvailability = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const provider = await providerService.toggleAvailability(req.user!.userId);
-  res.json(provider);
-});
+    const booking = await providerService.getBookingDetail(id);
+    res.status(200).json({ data: booking, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
 
-export const rateCustomer = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { rating } = req.body;
-  const booking = await providerService.rateCustomer(req.params.id, req.user!.userId, rating);
-  res.json(booking);
-});
+export const acceptBooking = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
 
-export const getNewRequests = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const requests = await providerService.getNewBookingRequests(req.user!.userId);
-  res.json(requests);
-});
+    const { id } = req.params;
+    if (!id) throw new AppError('Booking ID is required', 400);
 
-export const generateOtp = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const result = await providerService.generateBookingOtp(req.params.id, req.user!.userId);
-  res.json(result);
-});
+    const booking = await providerService.acceptBooking(id, userId);
+    res.status(200).json({ data: booking, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
 
-export const getServices = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const services = await providerService.getProviderServices(req.user!.userId);
-  res.json(services);
-});
+export const declineBooking = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
 
-export const createService = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const service = await providerService.createProviderService(req.user!.userId, req.body);
-  res.status(201).json(service);
-});
+    const { id } = req.params;
+    if (!id) throw new AppError('Booking ID is required', 400);
 
-export const updateService = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const service = await providerService.updateProviderService(req.user!.userId, req.params.id, req.body);
-  res.json(service);
-});
+    const booking = await providerService.declineBooking(id, userId);
+    res.status(200).json({ data: booking, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
 
-export const deactivateService = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const result = await providerService.deactivateService(req.user!.userId, req.params.id);
-  res.json(result);
-});
+export const updateJobStatus = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
 
-export const createVariation = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const variation = await providerService.createVariation(req.user!.userId, req.params.id, req.body);
-  res.status(201).json(variation);
-});
+    const { id } = req.params;
+    if (!id) throw new AppError('Booking ID is required', 400);
 
-export const updateVariation = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const variation = await providerService.updateVariation(req.user!.userId, req.params.id, req.body);
-  res.json(variation);
-});
+    const { status } = req.body;
+    if (!status) throw new AppError('status is required', 400);
 
-export const deleteVariation = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const result = await providerService.deleteVariation(req.user!.userId, req.params.id);
-  res.json(result);
-});
+    const booking = await providerService.updateJobStatus(id, userId, status);
+    res.status(200).json({ data: booking, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
 
-export const getNotifications = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const page = parseInt(req.query.page as string) || 1;
-  const limit = parseInt(req.query.limit as string) || 20;
-  const result = await providerService.getProviderNotifications(req.user!.userId, page, limit);
-  res.json(result);
-});
+export const uploadPhotos = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
 
-export const markNotificationRead = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const notification = await providerService.markProviderNotificationRead(req.user!.userId, req.params.id);
-  res.json(notification);
-});
+    const { id } = req.params;
+    if (!id) throw new AppError('Booking ID is required', 400);
 
-export const getReviews = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const reviews = await providerService.getProviderReviews(req.user!.userId);
-  res.json(reviews);
-});
+    const { photoUrls } = req.body;
+
+    const booking = await providerService.uploadPhotos(id, userId, photoUrls || []);
+    res.status(200).json({ data: booking, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const getEarnings = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const earnings = await providerService.getEarnings(userId);
+    res.status(200).json({ data: earnings, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const toggleAvailability = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const provider = await providerService.toggleAvailability(userId);
+    res.status(200).json({ data: provider, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const rateCustomer = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const { id } = req.params;
+    if (!id) throw new AppError('Booking ID is required', 400);
+
+    const { rating } = req.body;
+
+    const booking = await providerService.rateCustomer(id, userId, rating);
+    res.status(200).json({ data: booking, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const getNewRequests = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const requests = await providerService.getNewBookingRequests(userId);
+    res.status(200).json({ data: requests, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const generateOtp = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const { id } = req.params;
+    if (!id) throw new AppError('Booking ID is required', 400);
+
+    const result = await providerService.generateBookingOtp(id, userId);
+    res.status(200).json({ data: result, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const getServices = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const services = await providerService.getProviderServices(userId);
+    res.status(200).json({ data: services, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const createService = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const serviceData = req.body;
+    const service = await providerService.createProviderService(userId, serviceData);
+    res.status(201).json({ data: service, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const updateService = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const { id } = req.params;
+    if (!id) throw new AppError('Service ID is required', 400);
+
+    const serviceData = req.body;
+    const service = await providerService.updateProviderService(userId, id, serviceData);
+    res.status(200).json({ data: service, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const deactivateService = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const { id } = req.params;
+    if (!id) throw new AppError('Service ID is required', 400);
+
+    const result = await providerService.deactivateService(userId, id);
+    res.status(200).json({ data: result, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const createVariation = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const { id } = req.params;
+    if (!id) throw new AppError('Service ID is required', 400);
+
+    const variationData = req.body;
+    const variation = await providerService.createVariation(userId, id, variationData);
+    res.status(201).json({ data: variation, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const updateVariation = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const { id } = req.params;
+    if (!id) throw new AppError('Variation ID is required', 400);
+
+    const variationData = req.body;
+    const variation = await providerService.updateVariation(userId, id, variationData);
+    res.status(200).json({ data: variation, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const deleteVariation = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const { id } = req.params;
+    if (!id) throw new AppError('Variation ID is required', 400);
+
+    const result = await providerService.deleteVariation(userId, id);
+    res.status(200).json({ data: result, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const getNotifications = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+
+    const result = await providerService.getProviderNotifications(userId, page, limit);
+    res.status(200).json({ data: result, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const markNotificationRead = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const { id } = req.params;
+    if (!id) throw new AppError('Notification ID is required', 400);
+
+    const notification = await providerService.markProviderNotificationRead(userId, id);
+    res.status(200).json({ data: notification, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const getReviews = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const reviews = await providerService.getProviderReviews(userId);
+    res.status(200).json({ data: reviews, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};

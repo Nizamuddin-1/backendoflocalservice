@@ -16,6 +16,19 @@ export class AppError extends Error {
   }
 }
 
+function getErrorCode(statusCode: number): string {
+  const codes: Record<number, string> = {
+    400: 'BAD_REQUEST',
+    401: 'UNAUTHORIZED',
+    403: 'FORBIDDEN',
+    404: 'NOT_FOUND',
+    409: 'CONFLICT',
+    422: 'VALIDATION_ERROR',
+    429: 'RATE_LIMIT_EXCEEDED',
+  };
+  return codes[statusCode] || 'INTERNAL_SERVER_ERROR';
+}
+
 function handleMongooseError(err: Error): AppError {
   if (err instanceof mongoose.Error.ValidationError) {
     const details = Object.values(err.errors).map((e) => ({
@@ -50,10 +63,10 @@ export function errorHandler(
 ): void {
   if (err instanceof AppError && err.isOperational) {
     const response: Record<string, unknown> = {
-      success: false,
+      data: null,
       error: {
+        code: getErrorCode(err.statusCode),
         message: err.message,
-        status: err.statusCode,
       },
     };
     if (err.details) {
@@ -69,10 +82,10 @@ export function errorHandler(
   const mapped = handleMongooseError(err);
 
   const response: Record<string, unknown> = {
-    success: false,
+    data: null,
     error: {
+      code: getErrorCode(mapped.statusCode),
       message: mapped.message,
-      status: mapped.statusCode,
     },
   };
   if (env.nodeEnv === 'development') {

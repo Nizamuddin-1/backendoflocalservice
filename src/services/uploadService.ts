@@ -20,17 +20,17 @@ export async function uploadImage(
   filePath: string,
   options: { folder?: string; transformation?: string } = {}
 ): Promise<UploadResult> {
-  if (!env.cloudinaryCloudName) {
-    return {
-      url: filePath,
-      publicId: 'mock',
-      width: 0,
-      height: 0,
-      format: 'jpg',
-    };
-  }
-
   try {
+    if (!env.cloudinaryCloudName) {
+      return {
+        url: filePath,
+        publicId: 'mock',
+        width: 0,
+        height: 0,
+        format: 'jpg',
+      };
+    }
+
     const result = await cloudinary.uploader.upload(filePath, {
       folder: options.folder || 'localfix',
       transformation: options.transformation || 'q_auto',
@@ -52,24 +52,28 @@ export async function uploadImages(
   filePaths: string[],
   options: { folder?: string } = {}
 ): Promise<UploadResult[]> {
-  if (!env.cloudinaryCloudName) {
-    return filePaths.map((fp) => ({
-      url: fp,
-      publicId: 'mock',
-      width: 0,
-      height: 0,
-      format: 'jpg',
-    }));
-  }
+  try {
+    if (!env.cloudinaryCloudName) {
+      return filePaths.map((fp) => ({
+        url: fp,
+        publicId: 'mock',
+        width: 0,
+        height: 0,
+        format: 'jpg',
+      }));
+    }
 
-  const uploads = filePaths.map((fp) => uploadImage(fp, options));
-  return Promise.all(uploads);
+    const uploads = filePaths.map((fp) => uploadImage(fp, options));
+    return Promise.all(uploads);
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError('Failed to upload images', 500);
+  }
 }
 
 export async function deleteImage(publicId: string): Promise<void> {
-  if (!env.cloudinaryCloudName) return;
-
   try {
+    if (!env.cloudinaryCloudName) return;
     await cloudinary.uploader.destroy(publicId);
   } catch {
     throw new AppError('Failed to delete image', 500);

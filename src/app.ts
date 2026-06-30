@@ -3,11 +3,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
 import { env } from './config/env';
 import { errorHandler } from './middleware/errorHandler';
+import { apiLimiter } from './middleware/rateLimiter';
 import authRoutes from './routes/auth';
 import consumerRoutes from './routes/consumer';
 import providerRoutes from './routes/provider';
@@ -41,18 +41,16 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, error: { message: 'Too many requests, please try again later.', status: 429 } },
-});
-app.use('/api/', limiter);
+app.use('/api/', apiLimiter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
-  res.json({ success: true, status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() });
+  res.json({
+    success: true,
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
 });
 
 // API Routes
@@ -64,7 +62,10 @@ app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use((_req, res) => {
-  res.status(404).json({ success: false, error: { message: 'Route not found', status: 404 } });
+  res.status(404).json({
+    success: false,
+    error: { message: 'Route not found', status: 404 },
+  });
 });
 
 // Global error handler

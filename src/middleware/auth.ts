@@ -9,49 +9,64 @@ function verifyToken(token: string, secret: string): AuthPayload {
 }
 
 export function authenticate(req: AuthRequest, res: Response, next: NextFunction): void {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ success: false, error: { message: 'Access denied. No token provided.', status: 401 } });
-    return;
-  }
-
-  const token = authHeader.split(' ')[1];
-
   try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({
+        data: null,
+        error: { code: 'UNAUTHORIZED', message: 'Access denied. No token provided.' },
+      });
+      return;
+    }
+
+    const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token, env.jwtSecret);
     req.user = decoded;
     next();
   } catch {
-    res.status(401).json({ success: false, error: { message: 'Invalid or expired token.', status: 401 } });
+    res.status(401).json({
+      data: null,
+      error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token.' },
+    });
   }
 }
 
 export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction): void {
-  const authHeader = req.headers.authorization;
+  try {
+    const authHeader = req.headers.authorization;
 
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.split(' ')[1];
-    try {
-      const decoded = verifyToken(token, env.jwtSecret);
-      req.user = decoded;
-    } catch {
-      // Token invalid, continue without auth
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const decoded = verifyToken(token, env.jwtSecret);
+        req.user = decoded;
+      } catch {
+        // Token invalid, continue without auth
+      }
     }
-  }
 
-  next();
+    next();
+  } catch {
+    next();
+  }
 }
 
 export function requireRole(...roles: string[]) {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      res.status(401).json({ success: false, error: { message: 'Authentication required.', status: 401 } });
+      res.status(401).json({
+        data: null,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required.' },
+      });
       return;
     }
 
     if (!roles.includes(req.user.role)) {
-      res.status(403).json({ success: false, error: { message: 'Insufficient permissions.', status: 403 } });
+      res.status(403).json({
+        data: null,
+        error: { code: 'FORBIDDEN', message: 'Insufficient permissions.' },
+      });
       return;
     }
 
@@ -74,11 +89,19 @@ export function verifyRefreshToken(token: string): AuthPayload {
 }
 
 export async function hashToken(token: string): Promise<string> {
-  return bcrypt.hash(token, 10);
+  try {
+    return await bcrypt.hash(token, 10);
+  } catch (error) {
+    throw new AppError('Failed to hash token', 500);
+  }
 }
 
 export async function compareToken(token: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(token, hash);
+  try {
+    return await bcrypt.compare(token, hash);
+  } catch (error) {
+    throw new AppError('Failed to compare token', 500);
+  }
 }
 
 export function generateTokenPair(payload: AuthPayload): TokenPair {
@@ -86,4 +109,15 @@ export function generateTokenPair(payload: AuthPayload): TokenPair {
     accessToken: generateAccessToken(payload),
     refreshToken: generateRefreshToken(payload),
   };
+}
+
+class AppError extends Error {
+  statusCode: number;
+  isOperational: boolean;
+  constructor(message: string, statusCode: number = 500) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = true;
+    Object.setPrototypeOf(this, AppError.prototype);
+  }
 }

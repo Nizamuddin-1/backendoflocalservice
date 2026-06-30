@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth';
+import { uploadLimiter } from '../middleware/rateLimiter';
 import * as uploadController from '../controllers/uploadController';
 
 const router = Router();
@@ -28,6 +29,7 @@ const upload = multer({
 });
 
 router.use(authenticate);
+router.use(uploadLimiter);
 
 router.post('/image', upload.single('image'), uploadController.uploadSingle);
 router.post('/images', upload.array('images', 10), uploadController.uploadMultiple);

@@ -4,54 +4,64 @@ import { AppError } from '../middleware/errorHandler';
 const REFERRAL_REWARD_AMOUNT = 100;
 
 export async function applyReferral(newUserId: string, referralCode: string) {
-  const referrer = await User.findOne({ referralCode });
-  if (!referrer) {
-    // Invalid code, silently ignore
-    return;
-  }
+  try {
+    const referrer = await User.findOne({ referralCode });
+    if (!referrer) {
+      // Invalid code, silently ignore
+      return;
+    }
 
-  if (referrer._id.toString() === newUserId) {
-    throw new AppError('Cannot refer yourself', 400);
-  }
+    if (referrer._id.toString() === newUserId) {
+      throw new AppError('Cannot refer yourself', 400);
+    }
 
-  const existingRef = await Referral.findOne({ refereeId: newUserId });
-  if (existingRef) {
-    return;
-  }
+    const existingRef = await Referral.findOne({ refereeId: newUserId });
+    if (existingRef) {
+      return;
+    }
 
-  await Referral.create({
-    referrerId: referrer._id,
-    refereeId: newUserId,
-    code: referralCode,
-    status: 'pending',
-    rewardAmount: REFERRAL_REWARD_AMOUNT,
-  });
+    await Referral.create({
+      referrerId: referrer._id,
+      refereeId: newUserId,
+      code: referralCode,
+      status: 'pending',
+      rewardAmount: REFERRAL_REWARD_AMOUNT,
+    });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError('Failed to apply referral', 500);
+  }
 }
 
 export async function rewardReferral(refereeId: string) {
-  const referral = await Referral.findOne({ refereeId, status: 'pending' });
-  if (!referral) return;
+  try {
+    const referral = await Referral.findOne({ refereeId, status: 'pending' });
+    if (!referral) return;
 
-  const wallet = await Wallet.findOne({ userId: referral.referrerId });
-  if (!wallet) return;
+    const wallet = await Wallet.findOne({ userId: referral.referrerId });
+    if (!wallet) return;
 
-  wallet.balance += REFERRAL_REWARD_AMOUNT;
-  wallet.totalAdded += REFERRAL_REWARD_AMOUNT;
-  await wallet.save();
+    wallet.balance += REFERRAL_REWARD_AMOUNT;
+    wallet.totalAdded += REFERRAL_REWARD_AMOUNT;
+    await wallet.save();
 
-  await Transaction.create({
-    userId: referral.referrerId,
-    title: 'Referral Reward',
-    subtitle: `You earned ₹${REFERRAL_REWARD_AMOUNT} for referring a friend`,
-    amount: REFERRAL_REWARD_AMOUNT,
-    type: 'credit',
-    status: 'success',
-    date: 'Today',
-    time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-    icon: 'gift-outline',
-    iconColor: '#10B981',
-  });
+    await Transaction.create({
+      userId: referral.referrerId,
+      title: 'Referral Reward',
+      subtitle: `You earned ₹${REFERRAL_REWARD_AMOUNT} for referring a friend`,
+      amount: REFERRAL_REWARD_AMOUNT,
+      type: 'credit',
+      status: 'success',
+      date: 'Today',
+      time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+      icon: 'gift-outline',
+      iconColor: '#10B981',
+    });
 
-  referral.status = 'rewarded';
-  await referral.save();
+    referral.status = 'rewarded';
+    await referral.save();
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError('Failed to reward referral', 500);
+  }
 }
