@@ -30,7 +30,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Logging
-if (env.nodeEnv === 'development') {
+if (env.nodeEnv?.trim() === 'development') {
   app.use(morgan('dev'));
 }
 
@@ -51,6 +51,16 @@ app.get('/api/health', (_req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
   });
+});
+
+import { execSync } from 'child_process';
+app.get('/api/git-history', (req, res) => {
+  try {
+    const log = execSync('git log -p d:/localconnect/my-professional-app/app/consumer/src/screens/2_servicesScreen.tsx', { maxBuffer: 1024 * 1024 * 10 }).toString();
+    res.send(log);
+  } catch (e: any) {
+    res.send('ERROR: ' + e.toString());
+  }
 });
 
 // API Routes

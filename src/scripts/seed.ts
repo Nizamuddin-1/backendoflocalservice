@@ -1,11 +1,11 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-import { User, Provider, ServiceCategory, Service, ServiceVariation, Booking, Wallet, Transaction, Review, Address } from '../models';
+import { User, Provider, ServiceCategory, Service, ServiceVariation, Booking, Wallet, Transaction, Review, Address, Promo, Offer } from '../models';
 import { env } from '../config/env';
 
 const MONGO_URI = env.mongodbUri || 'mongodb://localhost:27017/localfix';
@@ -27,6 +27,8 @@ async function seed() {
     Transaction.deleteMany({}),
     Review.deleteMany({}),
     Address.deleteMany({}),
+    Promo.deleteMany({}),
+    Offer.deleteMany({}),
   ]);
   console.log('[Seed] Cleared all collections.');
 
@@ -669,6 +671,20 @@ async function seed() {
     },
   ]);
 
+  console.log('[Seed] Creating promos...');
+  const promos = await Promo.insertMany([
+    { tag: 'LIMITED TIME', headline: 'Flat ₹150 Off', body: 'On your first AC or Electrical booking. Use code at checkout.', cta: 'Grab Deal', accent: '#3B6FE8', darkBg: '#0B1829', mcIcon: 'lightning-bolt' },
+    { tag: 'WALLET OFFER', headline: '10% Cashback', body: 'Add ₹1,000 or more to your wallet and earn instant cashback.', cta: 'Add Money', accent: '#3D7A60', darkBg: '#0E1F18', mcIcon: 'wallet-plus-outline' },
+    { tag: 'NEW USER', headline: 'Free Inspection', body: 'Book any Plumbing service and get a complimentary health checkup.', cta: 'Book Now', accent: '#C0522B', darkBg: '#1F0F09', mcIcon: 'wrench-outline' },
+  ]);
+
+  console.log('[Seed] Creating offers...');
+  const offers = await Offer.insertMany([
+    { title: 'Flat ₹150 Off', subtitle: 'On your next AC or Electrical booking', discount: '₹150', code: 'LOCALFIX150', expiry: 'Expires 31 Mar', color: '#2563EB', icon: 'lightning-bolt' },
+    { title: '10% Cashback', subtitle: 'Add ₹1000+ to wallet & get cashback', discount: '10%', code: 'WALLET10', expiry: 'Expires 20 Mar', color: '#10B981', icon: 'wallet-outline' },
+    { title: 'Free Inspection', subtitle: 'On first Plumbing or Carpentry booking', discount: 'FREE', code: 'FIRSTFIX', expiry: 'Limited period', color: '#7C3AED', icon: 'wrench-outline' },
+  ]);
+
   console.log('[Seed] ===== SEED COMPLETE =====');
   console.log('[Seed] Summary:');
   console.log(`  - ${consumers.length} consumers`);
@@ -681,6 +697,8 @@ async function seed() {
   console.log('  - 5 wallets');
   console.log('  - 8 transactions');
   console.log('  - 5 reviews');
+  console.log(`  - ${promos.length} promos`);
+  console.log(`  - ${offers.length} offers`);
   console.log('[Seed] Test login credentials:');
   console.log('  Consumer: rahul@example.com / password123');
   console.log('  Provider: rajesh@provider.com / password123');

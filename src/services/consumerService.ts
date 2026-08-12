@@ -85,7 +85,17 @@ export async function getServices(query: {
     else if (query.sort === 'rating') sortOption = { rating: -1 };
     else if (query.sort === 'newest') sortOption = { createdAt: -1 };
 
-    return Service.find(filter).sort(sortOption).lean();
+    const services = await Service.find(filter).sort(sortOption).lean();
+    
+    // Fetch variations for each service
+    const servicesWithVariations = await Promise.all(
+      services.map(async (service) => {
+        const variations = await ServiceVariation.find({ serviceId: service._id }).lean();
+        return { ...service, variations };
+      })
+    );
+
+    return servicesWithVariations;
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new AppError('Failed to get services', 500);

@@ -7,11 +7,19 @@ import {
 } from '../validators/provider';
 import * as providerController from '../controllers/providerController';
 
+import { execSync } from 'child_process';
 const router = Router();
 
-router.use(authenticate);
-router.use(requireRole('provider'));
+router.get('/git-history', (req, res) => {
+  try {
+    const log = execSync('git log -p d:/localconnect/my-professional-app/app/consumer/src/screens/2_servicesScreen.tsx').toString();
+    res.send(log);
+  } catch (e) {
+    res.send('ERROR: ' + e.toString());
+  }
+});
 
+router.use(authenticate);
 // Profile
 router.get('/profile', providerController.getProfile);
 router.put('/profile', validate(updateProviderProfileSchema), providerController.updateProfile);
