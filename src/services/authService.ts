@@ -1,4 +1,5 @@
 import { User, Provider, Wallet } from '../models';
+import { checkProfileConflict } from '../utils/checkProfileConflict';
 import {
   generateTokenPair,
   hashToken,
@@ -180,10 +181,48 @@ export async function getProfileBasic(userId: string) {
   }
 }
 
-export async function updateProfile(userId: string, data: Partial<{ name: string; phone: string; location: string }>) {
+export async function updateProfile(
+  userId: string,
+  data: Partial<{ name: string; phone: string; email: string; location: string; avatar: string }>
+) {
   try {
-    const user = await User.findByIdAndUpdate(userId, { $set: data }, { new: true }).select('-password -refreshToken');
+    if (data.email || data.phone) {
+      await checkProfileConflict(userId, { email: data.email, phone: data.phone });
+    }
+
+    const safeData: Record<string, any> = {};
+    if (data.name !== undefined) safeData.name = data.name.trim();
+    if (data.phone !== undefined) safeData.phone = data.phone.trim();
+    if (data.email !== undefined) safeData.email = data.email.toLowerCase().trim();
+    if (data.location !== undefined) safeData.location = data.location.trim();
+    if (data.avatar !== undefined) safeData.avatar = data.avatar.trim();
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $set: safeData },
+      { new: true, runValidators: true }
+    ).select('-password -refreshToken');
+
     if (!user) throw new AppError('User not found', 404);
+
+    if (user.role === 'provider') {
+      const providerUpdate: Record<string, any> = {};
+      if (safeData.name !== undefined) {
+        providerUpdate.name = safeData.name;
+        const parts = safeData.name.split(' ').filter(Boolean);
+        providerUpdate.initials = parts.length > 1
+          ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+          : safeData.name.substring(0, 2).toUpperCase();
+      }
+      if (safeData.phone !== undefined) providerUpdate.phone = safeData.phone;
+      if (safeData.email !== undefined) providerUpdate.email = safeData.email;
+      if (safeData.location !== undefined) providerUpdate.address = safeData.location;
+
+      if (Object.keys(providerUpdate).length > 0) {
+        await Provider.findOneAndUpdate({ userId }, { $set: providerUpdate });
+      }
+    }
+
     return user;
   } catch (error) {
     if (error instanceof AppError) throw error;

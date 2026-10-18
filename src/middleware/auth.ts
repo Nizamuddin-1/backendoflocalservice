@@ -10,7 +10,19 @@ function verifyToken(token: string, secret: string): AuthPayload {
 
 export async function authenticate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { User, Provider } = await import('../models');
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const payload = verifyToken(token, env.jwtSecret);
+        req.user = payload;
+        return next();
+      } catch (err) {
+        return next(new AppError('Invalid or expired token', 401));
+      }
+    }
+
+    const { User } = await import('../models');
     if (req.originalUrl.includes('/provider')) {
       const providerUser = await User.findOne({ role: 'provider' });
       req.user = { userId: providerUser?._id.toString() || '111111111111111111111111', role: 'provider' };
@@ -39,7 +51,7 @@ export function requireRole(...roles: string[]) {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     // DEV BYPASS: always succeed
     if (!req.user) {
-      req.user = { userId: '111111111111111111111111', role: roles[0] || 'consumer' };
+      req.user = { userId: '111111111111111111111111', role: (roles[0] as any) || 'consumer' };
     }
     next();
   };

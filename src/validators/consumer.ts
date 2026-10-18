@@ -26,3 +26,12 @@ export const disputeSchema = z.object({
   reason: z.string().trim().min(1, 'Reason is required').max(200),
   description: z.string().trim().min(1, 'Description is required').max(2000),
 });
+
+export const updateConsumerProfileSchema = z.object({
+  name: z.string().trim().min(1, 'Name cannot be empty').max(100, 'Name cannot exceed 100 characters').optional(),
+  email: z.string().email('Invalid email format').toLowerCase().trim().optional(),
+  phone: z.string().regex(/^\+?[\d\s-]{10,15}$/, 'Invalid phone number format').trim().optional(),
+  location: z.string().trim().max(200, 'Location cannot exceed 200 characters').optional(),
+  avatar: z.string().trim().optional(),
+});
+

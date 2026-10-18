@@ -72,8 +72,8 @@ export const updateMe = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.userId;
     if (!userId) throw new AppError('User not authenticated', 401);
 
-    const { name, phone, location } = req.body;
-    const user = await authService.updateProfile(userId, { name, phone, location });
+    const { name, phone, email, location, avatar } = req.body;
+    const user = await authService.updateProfile(userId, { name, phone, email, location, avatar });
     res.status(200).json({ data: user, error: {} });
   } catch (error) {
     handleControllerError(error, res);

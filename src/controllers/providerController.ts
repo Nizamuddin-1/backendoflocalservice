@@ -21,8 +21,10 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.userId;
     if (!userId) throw new AppError('User not authenticated', 401);
 
-    const profileData = req.body;
-    const profile = await providerService.updateProviderProfile(userId, profileData);
+    const { name, phone, email, address, bio, languages, bank } = req.body;
+    const profile = await providerService.updateProviderProfile(userId, {
+      name, phone, email, address, bio, languages, bank,
+    });
     res.status(200).json({ data: profile, error: {} });
   } catch (error) {
     handleControllerError(error, res);

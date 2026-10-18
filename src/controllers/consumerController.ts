@@ -2,7 +2,33 @@ import { Response } from 'express';
 import { AuthRequest } from '../types';
 import { AppError } from '../middleware/errorHandler';
 import * as consumerService from '../services/consumerService';
+import * as authService from '../services/authService';
 import { handleControllerError } from '../utils/handleControllerError';
+
+export const getProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const profile = await authService.getProfile(userId);
+    res.status(200).json({ data: profile, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const updateProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('User not authenticated', 401);
+
+    const { name, phone, email, location, avatar } = req.body;
+    const profile = await authService.updateProfile(userId, { name, phone, email, location, avatar });
+    res.status(200).json({ data: profile, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
 
 export const getStats = async (req: AuthRequest, res: Response) => {
   try {

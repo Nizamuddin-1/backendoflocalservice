@@ -14,7 +14,7 @@ router.get('/git-history', (req, res) => {
   try {
     const log = execSync('git log -p d:/localconnect/my-professional-app/app/consumer/src/screens/2_servicesScreen.tsx').toString();
     res.send(log);
-  } catch (e) {
+  } catch (e: any) {
     res.send('ERROR: ' + e.toString());
   }
 });

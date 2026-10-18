@@ -2,6 +2,7 @@ import {
   Provider, Booking, User, Service, ServiceVariation, Notification, Review,
 } from '../models';
 import { AppError } from '../middleware/errorHandler';
+import { checkProfileConflict } from '../utils/checkProfileConflict';
 import * as bookingService from './bookingService';
 import * as notificationService from './notificationService';
 
@@ -18,12 +19,50 @@ export async function getProviderProfile(userId: string) {
 
 export async function updateProviderProfile(userId: string, data: any) {
   try {
+    if (data.email || data.phone) {
+      await checkProfileConflict(userId, { email: data.email, phone: data.phone });
+    }
+
+    const providerUpdate: Record<string, any> = {};
+    if (data.name !== undefined) {
+      const trimmedName = data.name.trim();
+      providerUpdate.name = trimmedName;
+      const parts = trimmedName.split(' ').filter(Boolean);
+      providerUpdate.initials = parts.length > 1
+        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+        : trimmedName.substring(0, 2).toUpperCase();
+    }
+    if (data.phone !== undefined) providerUpdate.phone = data.phone.trim();
+    if (data.email !== undefined) providerUpdate.email = data.email.toLowerCase().trim();
+    if (data.address !== undefined) providerUpdate.address = data.address.trim();
+    if (data.bio !== undefined) providerUpdate.bio = data.bio.trim();
+    if (Array.isArray(data.languages)) providerUpdate.languages = data.languages;
+    if (data.bank && typeof data.bank === 'object') {
+      providerUpdate.bank = {
+        bankName: data.bank.bankName || '',
+        ifscCode: data.bank.ifscCode || '',
+        accountHolderName: data.bank.accountHolderName || '',
+      };
+    }
+
     const provider = await Provider.findOneAndUpdate(
       { userId },
-      { $set: data },
-      { new: true }
+      { $set: providerUpdate },
+      { new: true, runValidators: true }
     );
     if (!provider) throw new AppError('Provider profile not found', 404);
+
+    // Synchronize common attributes to the User record
+    const userUpdate: Record<string, any> = {};
+    if (data.name !== undefined) userUpdate.name = data.name.trim();
+    if (data.phone !== undefined) userUpdate.phone = data.phone.trim();
+    if (data.email !== undefined) userUpdate.email = data.email.toLowerCase().trim();
+    if (data.address !== undefined) userUpdate.location = data.address.trim();
+
+    if (Object.keys(userUpdate).length > 0) {
+      await User.findByIdAndUpdate(userId, { $set: userUpdate });
+    }
+
     return provider;
   } catch (error) {
     if (error instanceof AppError) throw error;

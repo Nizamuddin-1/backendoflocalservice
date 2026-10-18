@@ -93,7 +93,7 @@ async function seedVariations() {
   console.log('[Seed] Cleared existing variations.');
 
   console.log('[Seed] Creating 6 variations for each service...');
-  const variationsToInsert = [];
+  const variationsToInsert: any[] = [];
   
   services.forEach((service, index) => {
     const variations = generateVariations(service._id as mongoose.Types.ObjectId, service.price || 499, index);

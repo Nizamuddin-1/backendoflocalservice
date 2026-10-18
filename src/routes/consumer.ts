@@ -14,12 +14,17 @@ import {
   updateAddressSchema,
   favoriteSchema,
   disputeSchema,
+  updateConsumerProfileSchema,
 } from '../validators/consumer';
 import * as consumerController from '../controllers/consumerController';
 
 const router = Router();
 
 router.use(authenticate);
+
+// Profile
+router.get('/profile', consumerController.getProfile);
+router.put('/profile', validate(updateConsumerProfileSchema), consumerController.updateProfile);
 
 // Stats & Browse
 router.get('/stats', consumerController.getStats);

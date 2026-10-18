@@ -50,7 +50,7 @@ export async function getServices(query: {
   minRating?: number;
   maxPrice?: number;
   verified?: boolean;
-}) {
+}): Promise<any> {
   try {
     const filter: any = { isActive: true };
 

@@ -19,6 +19,8 @@ export const refreshTokenSchema = z.object({
 
 export const updateProfileSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
+  email: z.string().email('Invalid email format').toLowerCase().trim().optional(),
   phone: z.string().regex(/^\+?[\d\s-]{10,15}$/).optional(),
   location: z.string().trim().max(200).optional(),
+  avatar: z.string().trim().optional(),
 });

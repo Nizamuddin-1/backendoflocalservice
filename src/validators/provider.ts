@@ -1,9 +1,12 @@
 import { z } from 'zod';
 
 export const updateProviderProfileSchema = z.object({
-  bio: z.string().max(500).optional(),
-  languages: z.array(z.string()).optional(),
-  address: z.string().max(500).optional(),
+  name: z.string().trim().min(1, 'Name cannot be empty').max(100, 'Name cannot exceed 100 characters').optional(),
+  email: z.string().email('Invalid email format').toLowerCase().trim().optional(),
+  phone: z.string().regex(/^\+?[\d\s-]{10,15}$/, 'Invalid phone number format').trim().optional(),
+  address: z.string().trim().max(500, 'Address cannot exceed 500 characters').optional(),
+  bio: z.string().trim().max(500, 'Bio cannot exceed 500 characters').optional(),
+  languages: z.array(z.string().max(50)).max(10).optional(),
   bank: z.object({
     bankName: z.string().max(100).optional(),
     ifscCode: z.string().regex(/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/, 'Invalid IFSC code').optional(),
