@@ -159,12 +159,12 @@ export async function declineBooking(bookingId: string, userId: string) {
 export async function updateJobStatus(
   bookingId: string,
   userId: string,
-  status: 'arrived' | 'started' | 'completed'
+  status: 'arrived' | 'started' | 'completed' | 'done'
 ) {
   try {
     const booking = await bookingService.updateJobStatus(bookingId, userId, status);
 
-    if (status === 'completed') {
+    if (status === 'completed' || status === 'done') {
       await notificationService.notifyBookingCompleted(
         bookingId,
         booking.providerName,

@@ -42,8 +42,8 @@ export const variationSchema = z.object({
 export const updateVariationSchema = variationSchema.partial();
 
 export const jobStatusSchema = z.object({
-  status: z.enum(['arrived', 'started', 'completed'], {
-    errorMap: () => ({ message: 'Status must be: arrived, started, or completed' }),
+  status: z.enum(['arrived', 'started', 'completed', 'done'], {
+    errorMap: () => ({ message: 'Status must be: arrived, started, completed, or done' }),
   }),
 });
 

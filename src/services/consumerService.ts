@@ -136,7 +136,12 @@ export async function createBooking(userId: string, data: {
 
     const service = await Service.findById(data.serviceId);
     if (service) {
-      const providerUser = await Provider.findById(service.providerUserId);
+      const providerUser = await Provider.findOne({
+        $or: [
+          { _id: service.providerUserId },
+          { userId: service.providerUserId },
+        ],
+      });
       if (providerUser) {
         const user = await User.findById(userId);
         await notificationService.notifyBookingCreated(

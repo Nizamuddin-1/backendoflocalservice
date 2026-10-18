@@ -15,7 +15,7 @@ const VALID_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
 
 const VALID_PROVIDER_TRANSITIONS: Record<ProviderBookingStatus, ProviderBookingStatus[]> = {
   new: ['active', 'cancelled'],
-  active: ['pending', 'cancelled'],
+  active: ['pending', 'done', 'cancelled'],
   pending: ['done', 'cancelled'],
   done: [],
   cancelled: [],
@@ -190,8 +190,37 @@ export async function createBooking(userId: string, data: {
 
     const durationMins = 60;
 
+    // Resolve provider from service.providerUserId (supports User or Provider ID) or business name
+    let provider = null;
+    if (service.providerUserId) {
+      provider = await Provider.findOne({
+        $or: [
+          { _id: service.providerUserId },
+          { userId: service.providerUserId },
+        ],
+      });
+    }
+    if (!provider && service.provider) {
+      provider = await Provider.findOne({ name: service.provider });
+    }
+    if (!provider) {
+      provider = await Provider.findOne({
+        $or: [
+          { category: service.categoryLabel },
+          { serviceCategories: service.categoryLabel },
+        ],
+      });
+    }
+    if (!provider) {
+      provider = await Provider.findOne();
+    }
+
+    const providerName = provider?.name || service.provider;
+    const providerInitials = provider?.initials || service.providerInitials;
+
     const booking = await Booking.create({
       consumerId: userId,
+      providerId: provider?._id,
       requestNo: await generateRequestNo(),
       customer: {
         name: user.name,
@@ -201,10 +230,12 @@ export async function createBooking(userId: string, data: {
           .join('')
           .slice(0, 2)
           .toUpperCase(),
-        rating: 0,
-        totalOrders: user.bookingsCount,
-        phone: user.phone,
+        rating: user.tier === 'Platinum' ? 5.0 : user.tier === 'Gold' ? 4.8 : 4.5,
+        totalOrders: user.bookingsCount || 1,
+        phone: user.phone || '9876543210',
       },
+      status: 'upcoming',
+      providerStatus: 'new',
       serviceType: service.categoryLabel,
       serviceVariantId: variantId,
       serviceName: service.name,
@@ -212,7 +243,7 @@ export async function createBooking(userId: string, data: {
       location: {
         address: data.address,
         city: data.city || '',
-        distanceKm: 0,
+        distanceKm: 2.5,
         etaMins: 15,
       },
       scheduledAt: scheduledDate,
@@ -235,9 +266,9 @@ export async function createBooking(userId: string, data: {
       canCancel: true,
       canReview: false,
       canTrack: false,
-      proAvatar: service.providerInitials,
-      providerName: service.provider,
-      initials: service.providerInitials,
+      proAvatar: providerInitials,
+      providerName,
+      initials: providerInitials,
       date: dateStr,
       time: timeStr,
       steps: [
@@ -346,7 +377,7 @@ export async function rescheduleBooking(
 export async function updateJobStatus(
   bookingId: string,
   userId: string,
-  status: 'arrived' | 'started' | 'completed'
+  status: 'arrived' | 'started' | 'completed' | 'done'
 ) {
   try {
     const provider = await Provider.findOne({ userId });
@@ -376,6 +407,7 @@ export async function updateJobStatus(
         break;
 
       case 'completed':
+      case 'done':
         validateStatusTransition(booking.status, 'completed');
         validateProviderStatusTransition(booking.providerStatus, 'done');
 
@@ -453,9 +485,14 @@ export async function declineBooking(bookingId: string, userId: string) {
     const booking = await Booking.findById(bookingId);
     if (!booking) throw new AppError('Booking not found', 404);
 
+    validateStatusTransition(booking.status, 'cancelled');
     validateProviderStatusTransition(booking.providerStatus, 'cancelled');
 
+    booking.status = 'cancelled';
     booking.providerStatus = 'cancelled';
+    booking.canCancel = false;
+    booking.canReschedule = false;
+    booking.cancelledAt = new Date();
     await booking.save();
 
     return booking;
@@ -482,7 +519,7 @@ export async function getConsumerBookings(userId: string, status?: string) {
     if (status && status !== 'all') {
       filter.status = status;
     }
-    return Booking.find(filter).sort({ scheduledAt: -1 }).lean();
+    return Booking.find(filter).sort({ createdAt: -1, scheduledAt: -1 }).lean();
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new AppError('Failed to get consumer bookings', 500);
@@ -516,7 +553,7 @@ export async function getProviderBookings(userId: string, filter?: string) {
       }
     }
 
-    return Booking.find(query).sort({ scheduledAt: -1 }).lean();
+    return Booking.find(query).sort({ createdAt: -1, scheduledAt: -1 }).lean();
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new AppError('Failed to get provider bookings', 500);
@@ -528,8 +565,8 @@ export async function getNewBookingRequests(userId: string) {
     const provider = await Provider.findOne({ userId });
     if (!provider) throw new AppError('Provider profile not found', 404);
 
-    return Booking.find({ providerStatus: 'new' })
-      .sort({ scheduledAt: 1 })
+    return Booking.find({ providerId: provider._id, providerStatus: 'new' })
+      .sort({ createdAt: -1, scheduledAt: 1 })
       .limit(10)
       .lean();
   } catch (error) {

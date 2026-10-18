@@ -13,6 +13,7 @@ import consumerRoutes from './routes/consumer';
 import providerRoutes from './routes/provider';
 import uploadRoutes from './routes/upload';
 import adminRoutes from './routes/admin';
+import bookingRoutes from './routes/bookings';
 
 const app = express();
 
@@ -67,6 +68,7 @@ app.get('/api/git-history', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/consumer', consumerRoutes);
 app.use('/api/provider', providerRoutes);
+app.use('/api/bookings', bookingRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/admin', adminRoutes);
 
