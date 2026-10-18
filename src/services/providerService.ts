@@ -8,8 +8,31 @@ import * as notificationService from './notificationService';
 
 export async function getProviderProfile(userId: string) {
   try {
-    const provider = await Provider.findOne({ userId });
-    if (!provider) throw new AppError('Provider profile not found', 404);
+    let provider = await Provider.findOne({ userId });
+    if (!provider) {
+      const user = await User.findById(userId);
+      if (user && (user.role === 'provider' || user.role === 'admin')) {
+        const initials = user.name
+          .split(' ')
+          .filter(Boolean)
+          .map((n: string) => n[0])
+          .join('')
+          .slice(0, 2)
+          .toUpperCase() || 'PR';
+        provider = await Provider.create({
+          userId: user._id,
+          name: user.name,
+          initials,
+          category: 'Service Provider',
+          serviceCategories: [],
+          phone: user.phone || '',
+          email: user.email || '',
+          address: user.location || '',
+        });
+      } else {
+        throw new AppError('Provider profile not found', 404);
+      }
+    }
     return provider;
   } catch (error) {
     if (error instanceof AppError) throw error;

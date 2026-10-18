@@ -528,8 +528,14 @@ export async function getConsumerBookings(userId: string, status?: string) {
 
 export async function getProviderBookings(userId: string, filter?: string) {
   try {
-    const provider = await Provider.findOne({ userId });
-    if (!provider) throw new AppError('Provider profile not found', 404);
+    let provider = await Provider.findOne({ userId });
+    if (!provider) {
+      const user = await User.findById(userId);
+      if (user && (user.role === 'provider' || user.role === 'admin')) {
+        return [];
+      }
+      throw new AppError('Provider profile not found', 404);
+    }
 
     let query: Record<string, unknown> = { providerId: provider._id };
 

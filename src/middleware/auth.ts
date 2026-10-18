@@ -18,29 +18,40 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
         req.user = payload;
         return next();
       } catch (err) {
-        return next(new AppError('Invalid or expired token', 401));
+        res.status(401).json({
+          data: null,
+          error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' },
+        });
+        return;
       }
     }
 
-    const { User } = await import('../models');
-    if (req.originalUrl.includes('/provider')) {
-      const providerUser = await User.findOne({ role: 'provider' });
-      req.user = { userId: providerUser?._id.toString() || '111111111111111111111111', role: 'provider' };
-    } else {
-      const consumerUser = await User.findOne({ role: 'consumer' });
-      req.user = { userId: consumerUser?._id.toString() || '111111111111111111111111', role: 'consumer' };
-    }
-    next();
+    res.status(401).json({
+      data: null,
+      error: { code: 'UNAUTHORIZED', message: 'User not authenticated' },
+    });
+    return;
   } catch (e) {
-    next();
+    res.status(401).json({
+      data: null,
+      error: { code: 'UNAUTHORIZED', message: 'Authentication failed' },
+    });
+    return;
   }
 }
 
 export async function optionalAuth(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { User } = await import('../models');
-    const consumerUser = await User.findOne({ role: 'consumer' });
-    req.user = { userId: consumerUser?._id.toString() || '111111111111111111111111', role: 'consumer' };
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const payload = verifyToken(token, env.jwtSecret);
+        req.user = payload;
+      } catch {
+        // Token invalid, continue without auth
+      }
+    }
     next();
   } catch (e) {
     next();
@@ -49,10 +60,22 @@ export async function optionalAuth(req: AuthRequest, res: Response, next: NextFu
 
 export function requireRole(...roles: string[]) {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
-    // DEV BYPASS: always succeed
     if (!req.user) {
-      req.user = { userId: '111111111111111111111111', role: (roles[0] as any) || 'consumer' };
+      res.status(401).json({
+        data: null,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+      });
+      return;
     }
+
+    if (!roles.includes(req.user.role)) {
+      res.status(403).json({
+        data: null,
+        error: { code: 'FORBIDDEN', message: 'Insufficient permissions' },
+      });
+      return;
+    }
+
     next();
   };
 }
