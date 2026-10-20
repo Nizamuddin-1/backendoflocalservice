@@ -5,7 +5,8 @@ import path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-import { User, Provider, ServiceCategory, Service, ServiceVariation, Booking, Wallet, Transaction, Review, Address, Promo, Offer } from '../models';
+import { User, Provider, ServiceCategory, ServiceCatalog, Service, ServiceVariation, Booking, Wallet, Transaction, Review, Address, Promo, Offer } from '../models';
+import { seedCatalog } from './seedCatalog';
 import { env } from '../config/env';
 
 const MONGO_URI = env.mongodbUri || 'mongodb://localhost:27017/localfix';
@@ -20,6 +21,7 @@ async function seed() {
     User.deleteMany({}),
     Provider.deleteMany({}),
     ServiceCategory.deleteMany({}),
+    ServiceCatalog.deleteMany({}),
     Service.deleteMany({}),
     ServiceVariation.deleteMany({}),
     Booking.deleteMany({}),
@@ -684,6 +686,9 @@ async function seed() {
     { title: '10% Cashback', subtitle: 'Add ₹1000+ to wallet & get cashback', discount: '10%', code: 'WALLET10', expiry: 'Expires 20 Mar', color: '#10B981', icon: 'wallet-outline' },
     { title: 'Free Inspection', subtitle: 'On first Plumbing or Carpentry booking', discount: 'FREE', code: 'FIRSTFIX', expiry: 'Limited period', color: '#7C3AED', icon: 'wrench-outline' },
   ]);
+
+  console.log('[Seed] Seeding master catalog...');
+  await seedCatalog(false);
 
   console.log('[Seed] ===== SEED COMPLETE =====');
   console.log('[Seed] Summary:');

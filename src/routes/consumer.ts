@@ -17,6 +17,7 @@ import {
   updateConsumerProfileSchema,
 } from '../validators/consumer';
 import * as consumerController from '../controllers/consumerController';
+import * as providerController from '../controllers/providerController';
 
 const router = Router();
 
@@ -28,6 +29,7 @@ router.put('/profile', validate(updateConsumerProfileSchema), consumerController
 
 // Stats & Browse
 router.get('/stats', consumerController.getStats);
+router.get('/catalog', providerController.getCatalog);
 router.get('/categories', consumerController.getCategories);
 router.get('/services', consumerController.getServices);
 router.get('/services/:id', consumerController.getServiceDetail);

@@ -23,6 +23,7 @@ export const createServiceSchema = z.object({
   mcIcon: z.string().min(1, 'Icon is required'),
   eta: z.string().min(1, 'ETA is required'),
   tags: z.array(z.string()).optional(),
+  categoryLabel: z.string().trim().optional(),
   accentColor: z.string().optional(),
   accentBg: z.string().optional(),
 });

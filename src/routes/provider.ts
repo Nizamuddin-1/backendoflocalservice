@@ -40,6 +40,7 @@ router.post('/bookings/:id/otp', providerController.generateOtp);
 router.post('/bookings/:id/rate-customer', validate(rateCustomerSchema), providerController.rateCustomer);
 
 // Service Management
+router.get('/catalog', providerController.getCatalog);
 router.get('/services', providerController.getServices);
 router.post('/services', validate(createServiceSchema), providerController.createService);
 router.put('/services/:id', validate(updateServiceSchema), providerController.updateService);

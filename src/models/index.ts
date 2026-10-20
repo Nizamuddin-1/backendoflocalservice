@@ -2,6 +2,7 @@ export { User, IUser } from './User';
 export { ServiceCategory, IServiceCategory } from './ServiceCategory';
 export { Provider, IProvider, IBankAccount, IDocument } from './Provider';
 export { Service, IService } from './Service';
+export { ServiceCatalog, IServiceCatalog, IServiceCatalogVariation } from './ServiceCatalog';
 export { ServiceVariation, IServiceVariation } from './ServiceVariation';
 export { Booking, IBooking, IBookingCustomer, IBookingServiceItem, IBookingLocation, IBookingStep } from './Booking';
 export { Transaction, ITransaction } from './Transaction';

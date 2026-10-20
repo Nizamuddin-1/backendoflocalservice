@@ -202,6 +202,17 @@ export const generateOtp = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getCatalog = async (req: AuthRequest, res: Response) => {
+  try {
+    const categoryId = req.query.categoryId as string | undefined;
+    const category = req.query.category as string | undefined;
+    const catalog = await providerService.getCatalog({ categoryId, category });
+    res.status(200).json({ data: catalog, error: {} });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
 export const getServices = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;

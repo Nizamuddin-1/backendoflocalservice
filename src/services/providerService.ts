@@ -1,5 +1,5 @@
 import {
-  Provider, Booking, User, Service, ServiceVariation, Notification, Review,
+  Provider, Booking, User, Service, ServiceCategory, ServiceCatalog, ServiceVariation, Notification, Review,
 } from '../models';
 import { AppError } from '../middleware/errorHandler';
 import { checkProfileConflict } from '../utils/checkProfileConflict';
@@ -315,7 +315,12 @@ export async function getProviderServices(userId: string) {
     const provider = await Provider.findOne({ userId });
     if (!provider) throw new AppError('Provider profile not found', 404);
 
-    return Service.find({ providerUserId: provider._id }).lean();
+    return Service.find({
+      $or: [
+        { providerUserId: provider._id },
+        { providerUserId: provider.userId },
+      ],
+    }).lean();
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new AppError('Failed to get provider services', 500);
@@ -327,12 +332,34 @@ export async function createProviderService(userId: string, data: any) {
     const provider = await Provider.findOne({ userId });
     if (!provider) throw new AppError('Provider profile not found', 404);
 
+    let categoryLabel = data.categoryLabel;
+    let accentColor = data.accentColor;
+    let accentBg = data.accentBg;
+
+    // Auto-resolve categoryLabel, accentColor, accentBg from ServiceCategory if missing
+    if (!categoryLabel || !accentColor || !accentBg) {
+      if (data.categoryId) {
+        const category = await ServiceCategory.findById(data.categoryId);
+        if (category) {
+          if (!categoryLabel) categoryLabel = category.name;
+          if (!accentColor) accentColor = category.color;
+          if (!accentBg) accentBg = category.bg;
+        }
+      }
+    }
+
+    categoryLabel = categoryLabel || 'General';
+    accentColor = accentColor || '#6366F1';
+    accentBg = accentBg || '#EEF2FF';
+
     const service = await Service.create({
       ...data,
       provider: provider.name,
       providerInitials: provider.initials,
       providerUserId: provider._id,
-      categoryLabel: data.categoryLabel || '',
+      categoryLabel,
+      accentColor,
+      accentBg,
       verified: false,
       jobCount: 0,
       reviews: 0,
@@ -341,9 +368,13 @@ export async function createProviderService(userId: string, data: any) {
     });
 
     return service;
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof AppError) throw error;
-    throw new AppError('Failed to create provider service', 500);
+    if (error?.name === 'ValidationError') {
+      const messages = Object.values(error.errors || {}).map((e: any) => e.message).join(', ');
+      throw new AppError(`Validation failed: ${messages || error.message}`, 422);
+    }
+    throw new AppError(error?.message || 'Failed to create provider service', 500);
   }
 }
 
@@ -353,7 +384,13 @@ export async function updateProviderService(userId: string, serviceId: string, d
     if (!provider) throw new AppError('Provider profile not found', 404);
 
     const service = await Service.findOneAndUpdate(
-      { _id: serviceId, providerUserId: provider._id },
+      {
+        _id: serviceId,
+        $or: [
+          { providerUserId: provider._id },
+          { providerUserId: provider.userId },
+        ],
+      },
       { $set: data },
       { new: true }
     );
@@ -372,7 +409,13 @@ export async function deactivateService(userId: string, serviceId: string) {
     if (!provider) throw new AppError('Provider profile not found', 404);
 
     const service = await Service.findOneAndUpdate(
-      { _id: serviceId, providerUserId: provider._id },
+      {
+        _id: serviceId,
+        $or: [
+          { providerUserId: provider._id },
+          { providerUserId: provider.userId },
+        ],
+      },
       { $set: { isActive: false } },
       { new: true }
     );
@@ -392,14 +435,39 @@ export async function createVariation(userId: string, serviceId: string, data: a
 
     const service = await Service.findOne({
       _id: serviceId,
-      providerUserId: provider._id,
+      $or: [
+        { providerUserId: provider._id },
+        { providerUserId: provider.userId },
+      ],
     });
     if (!service) throw new AppError('Service not found or not authorized', 404);
 
     return ServiceVariation.create({ ...data, serviceId });
+  } catch (error: any) {
+    if (error instanceof AppError) throw error;
+    if (error?.name === 'ValidationError') {
+      const messages = Object.values(error.errors || {}).map((e: any) => e.message).join(', ');
+      throw new AppError(`Validation failed: ${messages || error.message}`, 422);
+    }
+    throw new AppError(error?.message || 'Failed to create variation', 500);
+  }
+}
+
+export async function getCatalog(query: { categoryId?: string; category?: string }) {
+  try {
+    const filter: any = { isActive: true };
+    if (query.categoryId) {
+      filter.categoryId = query.categoryId;
+    } else if (query.category && query.category !== 'all') {
+      const cat = await ServiceCategory.findOne({
+        name: { $regex: query.category, $options: 'i' },
+      });
+      if (cat) filter.categoryId = cat._id;
+    }
+    return ServiceCatalog.find(filter).lean();
   } catch (error) {
     if (error instanceof AppError) throw error;
-    throw new AppError('Failed to create variation', 500);
+    throw new AppError('Failed to fetch catalog', 500);
   }
 }
 
